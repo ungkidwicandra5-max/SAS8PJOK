@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google" content="notranslate">
+    <title>UAS Genap PJOK SMPN 38 Bandar Lampung</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Anti-Copy and Selection */
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            background-color: #f3f4f6;
+        }
+        /* Custom Scrollbar for Grid */
+        .grid-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .grid-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+        .hidden { display: none !important; }
+        .modal-bg { background-color: rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-800 min-h-screen flex flex-col" oncontextmenu="return false;">
+
+    <!-- URL GOOGLE APPS SCRIPT UNTUK SPREADSHEET (GANTI URL INI) -->
+    <script>
+        const SCRIPT_URL ='https://script.google.com/macros/s/AKfycbwX51_vkNbxyNEq8WB37S7zQ4mY0-YybWkTPtSAVRzXmpl7GtNdim0g65-nVyup6TGG/exec'; 
+    </script>
+
+    <!-- SCREEN 1: LOGIN / SETUP -->
+    <div id="login-screen" class="flex-1 flex items-center justify-center p-4">
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-xl w-full max-w-md">
+            <div class="text-center mb-6">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Tut_Wuri_Handayani.svg/1200px-Tut_Wuri_Handayani.svg.png" alt="Logo" class="w-16 h-16 mx-auto mb-3" onerror="this.style.display='none'">
+                <h1 class="text-2xl font-bold text-blue-800">UAS GENAP PJOK</h1>
+                <p class="text-gray-500 font-medium">SMPN 38 Bandar Lampung</p>
+                <p class="text-sm text-red-500 mt-2 font-bold"><i class="fas fa-shield-alt"></i> Sistem Anti-Kecurangan Aktif</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="student-name" class="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500" placeholder="Masukkan nama lengkap..." autocomplete="off">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Kelas</label>
+                    <select id="student-class" class="w-full border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500">
+                        <option value="">-- Pilih Kelas --</option>
+                        <option value="8A">Kelas 8 A</option>
+                        <option value="8B">Kelas 8 B</option>
+                        <option value="8C">Kelas 8 C</option>
+                        <option value="8D">Kelas 8 D</option>
+                    </select>
+                </div>
+                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-xs text-yellow-800">
+                    <strong>PERHATIAN:</strong><br>
+                    1. Waktu ujian 90 Menit.<br>
+                    2. <b>DILARANG</b> keluar aplikasi, membuka tab baru, atau membelah layar (split screen).<br>
+                    3. Maksimal pelanggaran <b>2 KALI</b>. Pelanggaran ke-3 ujian otomatis diselesaikan dengan nilai yang ada.
+                </div>
+                <button onclick="startExam()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition duration-200">
+                    Mulai Ujian Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: EXAM INTERFACE -->
+    <div id="exam-screen" class="hidden flex-col h-screen">
+        <!-- Header -->
+        <div class="bg-blue-700 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-10">
+            <div>
+                <p class="text-sm font-bold truncate max-w-[150px] md:max-w-xs" id="display-name">Nama Siswa</p>
+                <p class="text-xs text-blue-200" id="display-class">Kelas</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-right">
+                    <p class="text-xs text-blue-200">Sisa Waktu</p>
+                    <p class="text-xl font-mono font-bold" id="timer-display">90:00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning Banner -->
+        <div id="warning-banner" class="hidden bg-red-600 text-white text-center text-sm py-1 font-bold animate-pulse">
+            Peringatan: Jangan tinggalkan halaman ujian! (<span id="warning-count">0</span>/2)
+        </div>
+
+        <!-- Question Area -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-white">
+            <div class="max-w-3xl mx-auto">
+                <div class="flex justify-between items-end mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold text-gray-700">Soal No. <span id="q-number" class="text-blue-600 text-2xl">1</span></h2>
+                    <button onclick="toggleGrid()" class="text-blue-600 font-semibold text-sm bg-blue-50 px-3 py-1 rounded-full"><i class="fas fa-th"></i> Daftar Soal</button>
+                </div>
+                
+                <p id="q-text" class="text-lg mb-6 leading-relaxed text-justify"></p>
+
+                <div id="options-container" class="space-y-3">
+                    <!-- Options will be rendered here via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="bg-white border-t p-4 pb-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-between max-w-3xl mx-auto w-full sticky bottom-0">
+            <button onclick="prevQuestion()" id="btn-prev" class="px-5 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg disabled:opacity-50"><i class="fas fa-chevron-left mr-1"></i> Prev</button>
+            <button onclick="submitExamPrompt()" id="btn-submit" class="hidden px-5 py-2 bg-green-500 text-white font-bold rounded-lg shadow-lg">Selesai & Kumpul</button>
+            <button onclick="nextQuestion()" id="btn-next" class="px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md">Next <i class="fas fa-chevron-right ml-1"></i></button>
+        </div>
+    </div>
+
+    <!-- QUESTION GRID MODAL -->
+    <div id="grid-modal" class="hidden fixed inset-0 modal-bg z-50 flex flex-col justify-end">
+        <div class="bg-white rounded-t-2xl p-4 h-[60vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">Daftar Soal</h3>
+                <button onclick="toggleGrid()" class="text-gray-500 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto grid-scroll">
+                <div id="grid-container" class="grid grid-cols-5 md:grid-cols-10 gap-2 p-1">
+                    <!-- Grid items injected by JS -->
+                </div>
+            </div>
+            <div class="mt-4 flex space-x-4 text-xs justify-center border-t pt-2">
+                <div class="flex items-center"><div class="w-3 h-3 bg-blue-600 rounded-sm mr-1"></div> Terjawab</div>
+                <div class="flex items-center"><div class="w-3 h-3 border border-gray-400 rounded-sm mr-1"></div> Belum</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: RESULT & REVIEW SCREEN -->
+    <div id="result-screen" class="hidden flex-1 flex-col items-center justify-start p-4 bg-gray-50 overflow-y-auto">
+        <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-3xl mt-4 text-center">
+            <h2 class="text-2xl font-bold text-green-600 mb-2">Ujian Selesai!</h2>
+            <p class="text-gray-600 mb-6">Terima kasih telah mengikuti UAS Genap PJOK.</p>
+            
+            <div id="loading-sync" class="hidden mb-4 text-blue-600 text-sm font-bold animate-pulse">
+                <i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan nilai ke sistem sekolah...
+            </div>
+            <div id="success-sync" class="hidden mb-4 text-green-600 text-sm font-bold bg-green-50 p-2 rounded">
+                <i class="fas fa-check-circle mr-2"></i> Nilai berhasil disimpan!
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6 text-left">
+                <div class="bg-gray-50 p-3 rounded border">
+                    <p class="text-xs text-gray-500">Nama Lengkap</p>
+                    <p class="font-bold" id="res-name">-</p>
+                </div>
+                <div class="bg-gray-50 p-3 rounded border">
+                    <p class="text-xs text-gray-500">Kelas</p>
+                    <p class="font-bold" id="res-class">-</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center space-x-4 mb-8">
+                <div class="text-center">
+                    <div class="w-20 h-20 rounded-full border-4 border-green-500 flex items-center justify-center text-2xl font-bold text-green-600 mx-auto" id="res-benar">0</div>
+                    <p class="text-xs font-semibold mt-1">Benar</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-20 h-20 rounded-full border-4 border-red-500 flex items-center justify-center text-2xl font-bold text-red-600 mx-auto" id="res-salah">0</div>
+                    <p class="text-xs font-semibold mt-1">Salah</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-20 h-20 rounded-full bg-blue-600 text-white flex items-center justify-center text-3xl font-bold mx-auto shadow-lg" id="res-nilai">0</div>
+                    <p class="text-xs font-semibold mt-1">NILAI AKHIR</p>
+                </div>
+            </div>
+
+            <button onclick="showReviewTab()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow transition">
+                <i class="fas fa-search mr-2"></i> Lihat Pembahasan Soal
+            </button>
+        </div>
+
+        <!-- Review Section -->
+        <div id="review-section" class="hidden w-full max-w-3xl mt-6 pb-10">
+            <h3 class="font-bold text-xl mb-4 border-b pb-2">Kunci Jawaban & Pembahasan</h3>
+            <div id="review-container" class="space-y-4">
+                <!-- Review items injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alert-modal" class="hidden fixed inset-0 modal-bg z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all scale-100">
+            <div id="alert-icon" class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-triangle"></i></div>
+            <h3 id="alert-title" class="text-xl font-bold mb-2">Peringatan!</h3>
+            <p id="alert-msg" class="text-gray-600 mb-6 text-sm">Pesan peringatan.</p>
+            <button id="alert-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold w-full">Mengerti</button>
+        </div>
+    </div>
+
+    <!-- DATA SOAL (50 SOAL PJOK KELAS 8) -->
+    <script>
+        const questionsData = [
+            // BOLA BESAR (10 Soal)
+            { q: "Dalam permainan sepak bola, apabila bola keluar melewati garis samping lapangan, maka akan dilakukan...", options: ["Tendangan sudut (Corner kick)", "Tendangan bebas (Free kick)", "Lemparan ke dalam (Throw in)", "Tendangan gawang (Goal kick)"], answer: 2, explanation: "Lemparan ke dalam (throw in) dilakukan saat bola keluar melewati garis samping (touch line)." },
+            { q: "Teknik menghentikan bola dalam sepak bola dapat dilakukan dengan bagian tubuh berikut, kecuali...", options: ["Telapak kaki", "Dada", "Paha", "Tangan"], answer: 3, explanation: "Dalam sepak bola, pemain selain kiper dilarang keras menyentuh bola dengan tangan (handsball)." },
+            { q: "Ukuran panjang lapangan sepak bola standar internasional yang ditetapkan oleh FIFA adalah...", options: ["90 - 100 meter", "100 - 110 meter", "110 - 120 meter", "80 - 90 meter"], answer: 1, explanation: "Berdasarkan standar FIFA, panjang lapangan sepak bola adalah 100-110 meter dan lebar 64-75 meter." },
+            { q: "Pukulan pembuka untuk memulai permainan bola voli disebut...", options: ["Smash", "Passing", "Blocking", "Service"], answer: 3, explanation: "Service (servis) adalah pukulan awal dari luar garis belakang lapangan untuk memulai permainan bola voli." },
+            { q: "Sikap kedua lengan saat melakukan passing bawah pada permainan bola voli adalah...", options: ["Dirapatkan dan diluruskan ke depan bawah", "Ditekuk dan ditarik ke belakang", "Dibuka selebar bahu menghadap ke atas", "Disilangkan di depan dada"], answer: 0, explanation: "Passing bawah dilakukan dengan merapatkan kedua lengan dan meluruskannya ke depan bawah untuk memantulkan bola." },
+            { q: "Sistem hitungan poin dalam permainan bola voli modern (Rally Point) berakhir pada angka...", options: ["15 poin", "21 poin", "25 poin", "30 poin"], answer: 2, explanation: "Sistem rally point dalam bola voli dimenangkan oleh tim yang pertama kali mencapai angka 25 (dengan selisih minimal 2 poin)." },
+            { q: "Dalam permainan bola basket, teknik membawa bola dengan memantul-mantulkannya ke lantai disebut...", options: ["Passing", "Dribbling", "Shooting", "Pivot"], answer: 1, explanation: "Dribbling adalah teknik menggiring bola basket dengan memantulkannya ke lantai menggunakan satu tangan." },
+            { q: "Tembakan yang dilakukan dari luar garis three-point dalam bola basket akan bernilai...", options: ["1 poin", "2 poin", "3 poin", "4 poin"], answer: 2, explanation: "Sesuai namanya, tembakan yang masuk dari luar garis lengkung (three-point line) bernilai 3 poin." },
+            { q: "Gerakan berputar dengan menggunakan satu kaki sebagai poros dalam bola basket disebut...", options: ["Rebound", "Lay-up", "Pivot", "Screen"], answer: 2, explanation: "Pivot adalah gerakan melindungi bola dengan berputar menggunakan satu kaki tumpuan yang tidak boleh bergeser." },
+            { q: "Organisasi induk olahraga bola basket tingkat dunia adalah...", options: ["FIFA", "FIBA", "FIVB", "BWF"], answer: 1, explanation: "FIBA (Fédération Internationale de Basketball) adalah induk organisasi bola basket internasional." },
+
+            // BOLA KECIL (10 Soal)
+            { q: "Pukulan dalam bulu tangkis yang meluncur cepat dan menukik tajam ke arah lapangan lawan disebut...", options: ["Lob", "Dropshot", "Smash", "Drive"], answer: 2, explanation: "Smash adalah pukulan serangan utama yang keras dan menukik tajam ke bawah." },
+            { q: "Pegangan raket seperti menjabat tangan orang lain dalam bulu tangkis disebut pegangan...", options: ["Forehand grip", "Backhand grip", "American grip", "Penhold grip"], answer: 0, explanation: "Forehand grip dilakukan seperti orang berjabat tangan, sangat umum digunakan." },
+            { q: "Permainan kasti dimainkan oleh dua regu, yaitu regu...", options: ["Penyerang dan bertahan", "Pemukul dan penjaga", "Pelari dan pelempar", "Pemain dan cadangan"], answer: 1, explanation: "Kasti terdiri dari regu pemukul (yang mendapat giliran memukul) dan regu penjaga." },
+            { q: "Alat pemukul dalam permainan tenis meja sering disebut dengan istilah...", options: ["Raket", "Bet", "Stick", "Tongkat"], answer: 1, explanation: "Alat pemukul bola pada tenis meja terbuat dari kayu dilapisi karet yang disebut Bet (Bat)." },
+            { q: "Cara memegang bet tenis meja seperti memegang tangkai pena disebut...", options: ["Shakehand grip", "Penhold grip", "Seemiller grip", "American grip"], answer: 1, explanation: "Penhold grip adalah gaya memegang bet yang mirip seperti memegang pena." },
+            { q: "Pukulan untuk menerbangkan shuttlecock setinggi-tingginya jauh ke belakang garis lapangan lawan disebut...", options: ["Smash", "Drive", "Netting", "Lob"], answer: 3, explanation: "Pukulan Lob bertujuan melambungkan kok ke bagian belakang lapangan lawan." },
+            { q: "Dalam permainan kasti, seorang pemukul diberi kesempatan memukul bola sebanyak...", options: ["1 kali", "2 kali", "3 kali", "Bebas"], answer: 2, explanation: "Setiap pemukul kasti umumnya diberi kesempatan 3 kali pukulan jika pukulan 1 dan 2 gagal (strikes)." },
+            { q: "Berapa jumlah pemain dalam satu regu permainan kasti?", options: ["9 orang", "11 orang", "12 orang", "15 orang"], answer: 2, explanation: "Satu regu inti dalam permainan kasti berjumlah 12 orang pemain." },
+            { q: "Pukulan dengan ayunan bet dari bawah ke atas menyilang badan dalam tenis meja disebut...", options: ["Push", "Block", "Drive / Topspin", "Chop"], answer: 2, explanation: "Topspin atau drive memutar bola ke depan dengan ayunan dari bawah ke atas." },
+            { q: "Induk organisasi bulu tangkis di Indonesia adalah...", options: ["PBVSI", "PSSI", "PBSI", "PERBASI"], answer: 2, explanation: "PBSI (Persatuan Bulutangkis Seluruh Indonesia) adalah induk bulu tangkis nasional." },
+
+            // BELA DIRI (10 Soal)
+            { q: "Sikap dasar yang menjadi titik tolak serangan maupun pembelaan dalam pencak silat adalah...", options: ["Sikap pasang", "Sikap kuda-kuda", "Sikap hormat", "Sikap tegak"], answer: 1, explanation: "Kuda-kuda adalah posisi menapak kaki untuk memperkokoh posisi tubuh sebagai dasar serangan/pembelaan." },
+            { q: "Usaha pembelaan diri dari serangan lawan dengan cara memindahkan sasaran tubuh ke arah lain disebut...", options: ["Tangkisan", "Hindaran / Elakan", "Pukulan", "Tangkapan"], answer: 1, explanation: "Elakan/hindaran memindahkan posisi tubuh agar tidak terkena serangan tanpa melakukan kontak fisik langsung." },
+            { q: "Tangkisan dalam pencak silat yang dilakukan dari luar ke arah dalam disebut tangkisan...", options: ["Luar", "Atas", "Dalam", "Bawah"], answer: 2, explanation: "Tangkisan dalam bergerak menepis serangan lawan dari sisi luar ditarik ke arah dalam tubuh." },
+            { q: "Tendangan yang dilakukan dengan posisi tubuh menyamping dan perkenaannya pada pisau kaki adalah tendangan...", options: ["Lurus", "Sabit", "T / Samping", "Belakang"], answer: 2, explanation: "Tendangan T dilakukan dengan tubuh menyamping dan mengenai target dengan sisi luar telapak kaki (pisau kaki)." },
+            { q: "Pukulan lurus ke depan dengan tangan mengepal disebut pukulan...", options: ["Bandul", "Melingkar", "Lurus / Depan", "Tebasan"], answer: 2, explanation: "Pukulan depan atau lurus arahnya lurus ke depan mengarah ke ulu hati atau dada lawan." },
+            { q: "Organisasi yang mewadahi perguruan pencak silat di Indonesia adalah...", options: ["IPSI", "PRSI", "PASI", "PSSI"], answer: 0, explanation: "IPSI (Ikatan Pencak Silat Indonesia) dibentuk pada 18 Mei 1948." },
+            { q: "Nilai poin untuk serangan pukulan yang sah dan masuk ke sasaran pada pertandingan pencak silat adalah...", options: ["1", "2", "3", "4"], answer: 0, explanation: "Pukulan bernilai 1, tendangan bernilai 2, dan jatuhan bernilai 3 poin." },
+            { q: "Sikap telapak kaki pada kuda-kuda depan adalah...", options: ["Satu kaki di depan ditekuk, kaki belakang lurus", "Kedua kaki ditekuk sejajar", "Kaki belakang ditekuk, depan lurus", "Kedua kaki diluruskan"], answer: 0, explanation: "Kuda-kuda depan berat badan difokuskan pada kaki depan yang ditekuk, kaki belakang lurus." },
+            { q: "Gerakan menjatuhkan lawan dengan cara menjepit kedua kaki lawan disebut...", options: ["Bantingan", "Guntingan", "Sapuan", "Sikutan"], answer: 1, explanation: "Guntingan adalah teknik menjatuhkan lawan dengan menggunting/menjepit bagian tubuh (biasanya kaki) lawan." },
+            { q: "Asal usul seni bela diri Pencak Silat adalah dari negara...", options: ["Jepang", "Korea", "Tiongkok", "Indonesia"], answer: 3, explanation: "Pencak silat adalah seni bela diri asli dari Kepulauan Nusantara (Indonesia)." },
+
+            // ATLETIK (10 Soal)
+            { q: "Start yang digunakan oleh pelari jarak pendek (sprint) adalah...", options: ["Start berdiri", "Start melayang", "Start jongkok", "Start berlari"], answer: 2, explanation: "Lari jarak pendek (100m, 200m, 400m) diwajibkan menggunakan start jongkok (crouching start)." },
+            { q: "Aba-aba dalam lari jarak pendek adalah...", options: ["Bersedia - Siap - Ya", "Siap - Awas - Ya", "Satu - Dua - Tiga", "Bersedia - Awas - Lari"], answer: 0, explanation: "Urutan aba-aba start lari sprint adalah Bersedia, Siap, lalu Ya (atau bunyi pistol)." },
+            { q: "Gaya tolak peluru di mana atlet menyampingi arah tolakan disebut gaya...", options: ["O'Brien", "Ortodoks", "Flop", "Straddle"], answer: 1, explanation: "Gaya Ortodoks dilakukan dengan sikap menyamping dari arah tolakan peluru." },
+            { q: "Lari estafet juga sering disebut dengan lari...", options: ["Maraton", "Gawang", "Sambung", "Jauh"], answer: 2, explanation: "Estafet melibatkan 4 pelari yang bersambung memberikan tongkat." },
+            { q: "Dalam lompat jauh, sikap badan melayang di udara dengan kedua kaki dan tangan ditarik ke depan dinamakan gaya...", options: ["Jongkok (Tuck)", "Menggantung (Hang)", "Berjalan di udara", "Bebas"], answer: 0, explanation: "Gaya jongkok adalah gaya pemula dimana badan membentuk sikap jongkok saat melayang." },
+            { q: "Berat peluru untuk atlet tolak peluru putra senior adalah...", options: ["3 kg", "4 kg", "5 kg", "7,257 kg"], answer: 3, explanation: "Standar internasional berat peluru untuk putra senior adalah 7,26 kg." },
+            { q: "Zona pergantian tongkat pada lari estafet memiliki panjang...", options: ["10 meter", "20 meter", "30 meter", "40 meter"], answer: 1, explanation: "Zona wesel (pergantian tongkat) panjangnya adalah 20 meter." },
+            { q: "Posisi pelari penerima tongkat estafet yang tidak menoleh ke belakang saat menerima disebut cara...", options: ["Visual", "Non-visual", "Langsung", "Tidak langsung"], answer: 1, explanation: "Non-visual biasa digunakan untuk estafet 4x100 meter agar kecepatan lari maksimal." },
+            { q: "Fase menolakkan satu kaki terkuat pada papan tumpuan dalam lompat jauh disebut...", options: ["Awalan", "Tolakan", "Melayang", "Mendarat"], answer: 1, explanation: "Fase tolakan (take off) memindahkan kecepatan horizontal menjadi vertikal ke depan." },
+            { q: "Induk organisasi olahraga atletik di Indonesia adalah...", options: ["PASI", "PBSI", "PERBASI", "PRSI"], answer: 0, explanation: "PASI singkatan dari Persatuan Atletik Seluruh Indonesia." },
+
+            // RENANG (10 Soal)
+            { q: "Gaya renang yang paling cepat dan sering digunakan dalam perlombaan adalah...", options: ["Gaya Dada", "Gaya Punggung", "Gaya Bebas", "Gaya Kupu-kupu"], answer: 2, explanation: "Gaya bebas (crawl) adalah teknik berenang yang terbukti menghasilkan kecepatan maksimal." },
+            { q: "Gaya renang yang mirip dengan gerakan katak berenang adalah...", options: ["Gaya Bebas", "Gaya Dada", "Gaya Kupu-kupu", "Gaya Punggung"], answer: 1, explanation: "Gaya dada (breaststroke) gerakannya meniru cara katak berenang." },
+            { q: "Pengambilan napas pada renang gaya bebas dilakukan pada saat...", options: ["Kepala di dalam air", "Tangan lurus ke depan", "Kepala menoleh ke satu sisi (kiri/kanan)", "Kedua tangan ditarik ke belakang"], answer: 2, explanation: "Napas diambil saat kepala diputar ke samping seiring ayunan lengan ke atas." },
+            { q: "Satu-satunya gaya renang dimana perenang menghadap ke atas (langit) adalah...", options: ["Gaya Bebas", "Gaya Dada", "Gaya Punggung", "Gaya Kupu-kupu"], answer: 2, explanation: "Gaya punggung (backstroke) dilakukan dengan posisi tubuh terlentang." },
+            { q: "Induk organisasi olahraga renang internasional adalah...", options: ["FINA", "FIFA", "BWF", "IAAF"], answer: 0, explanation: "FINA (Fédération Internationale de Natation) mengatur olahraga akuatik dunia." },
+            { q: "Dalam perlombaan renang estafet gaya ganti, urutan gaya yang benar adalah...", options: ["Bebas-Dada-Punggung-Kupu", "Punggung-Dada-Kupu-Bebas", "Kupu-Punggung-Dada-Bebas", "Dada-Kupu-Punggung-Bebas"], answer: 1, explanation: "Urutan Medley Relay adalah Punggung (start bawah), Dada, Kupu-kupu, lalu Bebas." },
+            { q: "Gerakan lengan pada renang gaya dada yang benar adalah...", options: ["Diputar bergantian ke depan", "Diputar bersamaan ke depan seperti kincir", "Mendayung ke samping luar lalu ditarik ke dada", "Ditarik lurus ke belakang perut"], answer: 2, explanation: "Tangan membelah air ke samping lalu ditarik menyatu di bawah dada." },
+            { q: "Renang gaya kupu-kupu juga sering dikenal dengan sebutan gaya...", options: ["Katak", "Lumba-lumba (Dolphin)", "Anjing", "Batu"], answer: 1, explanation: "Gerakan tubuh mengombak dan lecutan kaki bersamaan mirip gerakan lumba-lumba." },
+            { q: "Langkah pertama untuk belajar berenang bagi pemula adalah latihan...", options: ["Meluncur", "Pengenalan air", "Pernapasan", "Gerakan kaki"], answer: 1, explanation: "Sebelum meluncur, pemula harus beradaptasi dan berani di dalam air (pengenalan air)." },
+            { q: "Manfaat utama olahraga renang bagi tubuh adalah...", options: ["Meningkatkan kekuatan pukulan", "Melatih otot jantung dan pernapasan", "Menambah berat badan", "Melenturkan tulang belakang saja"], answer: 1, explanation: "Renang adalah olahraga kardio yang sangat baik untuk paru-paru, jantung, dan seluruh otot tubuh." }
+        ];
+
+        // STATE VARIABLES
+        let currentQuestion = 0;
+        let answers = new Array(questionsData.length).fill(null);
+        let studentData = { name: '', class: '', score: 0, correct: 0, wrong: 0 };
+        
+        let warnings = 0;
+        let MAX_WARNINGS = 2;
+        let timeInSeconds = 90 * 60; // 90 minutes
+        let timerInterval;
+        let isExamActive = false;
+
+        // ELEMENT REFERENCES
+        const els = {
+            screenLogin: document.getElementById('login-screen'),
+            screenExam: document.getElementById('exam-screen'),
+            screenResult: document.getElementById('result-screen'),
+            gridModal: document.getElementById('grid-modal'),
+            qText: document.getElementById('q-text'),
+            qNum: document.getElementById('q-number'),
+            optContainer: document.getElementById('options-container'),
+            btnPrev: document.getElementById('btn-prev'),
+            btnNext: document.getElementById('btn-next'),
+            btnSubmit: document.getElementById('btn-submit'),
+            timerDisplay: document.getElementById('timer-display'),
+            gridContainer: document.getElementById('grid-container'),
+            warningBanner: document.getElementById('warning-banner'),
+            warningCount: document.getElementById('warning-count'),
+            reviewSection: document.getElementById('review-section')
+        };
+
+        // --- CORE FUNCTIONS ---
+
+        function showAlert(title, msg, btnText = "Mengerti", callback = null) {
+            const modal = document.getElementById('alert-modal');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-msg').innerText = msg;
+            const btn = document.getElementById('alert-btn');
+            btn.innerText = btnText;
+            
+            modal.classList.remove('hidden');
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                if(callback) callback();
+            };
+        }
+
+        function startExam() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            const classInput = document.getElementById('student-class').value;
+
+            if (!nameInput || !classInput) {
+                showAlert("Data Belum Lengkap", "Harap isi Nama Lengkap dan pilih Kelas sebelum memulai ujian.");
+                return;
+            }
+
+            studentData.name = nameInput;
+            studentData.class = classInput;
+            document.getElementById('display-name').innerText = nameInput;
+            document.getElementById('display-class').innerText = classInput;
+
+            // Try Fullscreen for anti-cheat
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen ditolak pengguna"));
+            }
+
+            els.screenLogin.classList.add('hidden');
+            els.screenExam.classList.remove('hidden');
+            els.screenExam.classList.add('flex');
+            
+            isExamActive = true;
+            renderQuestion();
+            buildGrid();
+            startTimer();
+            setupAntiCheat();
+        }
+
+        function renderQuestion() {
+            const q = questionsData[currentQuestion];
+            els.qNum.innerText = currentQuestion + 1;
+            els.qText.innerText = q.q;
+
+            els.optContainer.innerHTML = '';
+            const labels = ['A', 'B', 'C', 'D'];
+
+            q.options.forEach((opt, index) => {
+                const isSelected = answers[currentQuestion] === index;
+                const div = document.createElement('div');
+                div.className = `p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 flex items-center ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'}`;
+                div.onclick = () => selectAnswer(index);
+                
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold mr-3 ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}">
+                        ${labels[index]}
+                    </div>
+                    <div class="flex-1 text-gray-800 text-sm md:text-base">${opt}</div>
+                    ${isSelected ? '<i class="fas fa-check-circle text-blue-600 text-xl"></i>' : ''}
+                `;
+                els.optContainer.appendChild(div);
+            });
+
+            // Update buttons
+            els.btnPrev.disabled = currentQuestion === 0;
+            if (currentQuestion === questionsData.length - 1) {
+                els.btnNext.classList.add('hidden');
+                els.btnSubmit.classList.remove('hidden');
+            } else {
+                els.btnNext.classList.remove('hidden');
+                els.btnSubmit.classList.add('hidden');
+            }
+
+            updateGridUI();
+        }
+
+        function selectAnswer(index) {
+            answers[currentQuestion] = index;
+            renderQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentQuestion < questionsData.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+            }
+        }
+
+        function toggleGrid() {
+            els.gridModal.classList.toggle('hidden');
+        }
+
+        function buildGrid() {
+            els.gridContainer.innerHTML = '';
+            for (let i = 0; i < questionsData.length; i++) {
+                const btn = document.createElement('button');
+                btn.id = `grid-btn-${i}`;
+                btn.className = `h-10 rounded text-sm font-bold border transition ${i === currentQuestion ? 'ring-2 ring-offset-1 ring-blue-500' : ''}`;
+                btn.innerText = i + 1;
+                btn.onclick = () => {
+                    currentQuestion = i;
+                    renderQuestion();
+                    toggleGrid();
+                };
+                els.gridContainer.appendChild(btn);
+            }
+            updateGridUI();
+        }
+
+        function updateGridUI() {
+            for (let i = 0; i < questionsData.length; i++) {
+                const btn = document.getElementById(`grid-btn-${i}`);
+                if (!btn) continue;
+                
+                if (answers[i] !== null) {
+                    btn.className = `h-10 w-full rounded text-sm font-bold bg-blue-600 text-white shadow ${i === currentQuestion ? 'ring-2 ring-offset-2 ring-blue-400' : ''}`;
+                } else {
+                    btn.className = `h-10 w-full rounded text-sm font-bold bg-white text-gray-700 border border-gray-300 ${i === currentQuestion ? 'ring-2 ring-offset-2 ring-gray-400' : ''}`;
+                }
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeInSeconds--;
+                const m = Math.floor(timeInSeconds / 60).toString().padStart(2, '0');
+                const s = (timeInSeconds % 60).toString().padStart(2, '0');
+                els.timerDisplay.innerText = `${m}:${s}`;
+
+                if (timeInSeconds <= 300) { // 5 minutes left
+                    els.timerDisplay.classList.add('text-red-300', 'animate-pulse');
+                }
+
+                if (timeInSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    forceSubmit("Waktu Habis!");
+                }
+            }, 1000);
+        }
+
+        // --- ANTI CHEAT SYSTEM ---
+        function setupAntiCheat() {
+            // Visibility Change (Switch tab / minimize)
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            // Blur (Lose focus)
+            window.addEventListener('blur', handleBlur);
+        }
+
+        function removeAntiCheat() {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('blur', handleBlur);
+        }
+
+        function handleCheatEvent() {
+            if (!isExamActive) return;
+            warnings++;
+            els.warningBanner.classList.remove('hidden');
+            els.warningCount.innerText = warnings;
+
+            if (warnings > MAX_WARNINGS) {
+                forceSubmit("Kecurangan Terdeteksi Berulang Kali!");
+            } else {
+                showAlert("PERINGATAN KECURANGAN!", `Sistem mendeteksi Anda keluar dari halaman ujian.\n\nPeringatan: ${warnings} dari ${MAX_WARNINGS}.\n\nJika mencapai batas maksimal, ujian akan otomatis diselesaikan dan nilai hangus.`, "Kembali ke Ujian");
+            }
+        }
+
+        function handleVisibilityChange() {
+            if (document.hidden && isExamActive) handleCheatEvent();
+        }
+
+        function handleBlur() {
+            // Slight delay to prevent false positive on touch devices clicking within iframe
+            setTimeout(() => {
+                if (document.hidden && isExamActive) handleCheatEvent();
+            }, 500);
+        }
+
+        // Disable keyboard shortcuts (Ctrl+C, Ctrl+V, F12, PrintScreen)
+        document.addEventListener('keydown', (e) => {
+            if(isExamActive) {
+                if (e.key === "PrintScreen" || e.keyCode === 44 || 
+                   (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'p')) ||
+                   e.keyCode === 123) { 
+                    e.preventDefault();
+                    showAlert("Tindakan Dilarang", "Fitur ini dinonaktifkan selama ujian.");
+                }
+            }
+        });
+
+        // --- SUBMIT & RESULTS ---
+        function submitExamPrompt() {
+            let unanswered = answers.filter(a => a === null).length;
+            let msg = unanswered > 0 
+                ? `Masih ada ${unanswered} soal yang belum dijawab. Yakin ingin mengumpulkan?` 
+                : "Anda sudah menjawab semua soal. Yakin ingin mengumpulkan sekarang?";
+            
+            const modal = document.getElementById('alert-modal');
+            document.getElementById('alert-title').innerText = "Kumpulkan Ujian?";
+            document.getElementById('alert-msg').innerText = msg;
+            
+            const btn = document.getElementById('alert-btn');
+            btn.innerText = "Ya, Kumpulkan";
+            
+            // Add Cancel button temporarily
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'temp-cancel';
+            cancelBtn.className = "bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-bold w-full mt-2";
+            cancelBtn.innerText = "Batal";
+            btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
+
+            modal.classList.remove('hidden');
+
+            btn.onclick = () => {
+                modal.classList.add('hidden');
+                document.getElementById('temp-cancel').remove();
+                calculateAndSubmit();
+            };
+            cancelBtn.onclick = () => {
+                modal.classList.add('hidden');
+                document.getElementById('temp-cancel').remove();
+            };
+        }
+
+        function forceSubmit(reason) {
+            showAlert("Ujian Dihentikan!", reason + "\nJawaban Anda akan dikirim otomatis dengan status yang ada.", "Lihat Hasil", calculateAndSubmit);
+        }
+
+        function calculateAndSubmit() {
+            isExamActive = false;
+            clearInterval(timerInterval);
+            removeAntiCheat();
+            if (document.exitFullscreen) document.exitFullscreen().catch(e=>console.log(e));
+
+            let correct = 0;
+            answers.forEach((ans, index) => {
+                if (ans === questionsData[index].answer) correct++;
+            });
+
+            studentData.correct = correct;
+            studentData.wrong = questionsData.length - correct;
+            studentData.score = correct * 2; // 2 points per correct answer
+
+            // Show Result Screen
+            els.screenExam.classList.add('hidden');
+            els.screenExam.classList.remove('flex');
+            els.screenResult.classList.remove('hidden');
+            els.screenResult.classList.add('flex');
+
+            document.getElementById('res-name').innerText = studentData.name;
+            document.getElementById('res-class').innerText = studentData.class;
+            document.getElementById('res-benar').innerText = studentData.correct;
+            document.getElementById('res-salah').innerText = studentData.wrong;
+            document.getElementById('res-nilai').innerText = studentData.score;
+
+            buildReview();
+            sendToSpreadsheet();
+        }
+
+        function showReviewTab() {
+            els.reviewSection.classList.remove('hidden');
+            els.reviewSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function buildReview() {
+            const container = document.getElementById('review-container');
+            container.innerHTML = '';
+            
+            questionsData.forEach((q, i) => {
+                const userAns = answers[i];
+                const isCorrect = userAns === q.answer;
+                const labels = ['A', 'B', 'C', 'D'];
+                
+                let userText = userAns !== null ? labels[userAns] + ". " + q.options[userAns] : "Tidak Dijawab";
+                let correctText = labels[q.answer] + ". " + q.options[q.answer];
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded border shadow-sm";
+                card.innerHTML = `
+                    <p class="font-bold text-gray-800 text-sm mb-2">${i+1}. ${q.q}</p>
+                    <div class="text-xs mb-2">
+                        <p class="${isCorrect ? 'text-green-600 font-bold' : 'text-red-600'}">Jawaban Kamu: ${userText} ${isCorrect ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>'}</p>
+                        ${!isCorrect ? `<p class="text-green-600 font-bold mt-1">Kunci Jawaban: ${correctText}</p>` : ''}
+                    </div>
+                    <div class="bg-blue-50 text-blue-800 text-xs p-2 rounded mt-2 border border-blue-100">
+                        <strong>Pembahasan:</strong> ${q.explanation}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- SPREADSHEET INTEGRATION ---
+        function sendToSpreadsheet() {
+            if (!SCRIPT_URL.startsWith('http')) {
+                console.log("URL Spreadsheet belum disetting. Data:", studentData);
+                return; // Skip if user hasn't put the URL
+            }
+
+            document.getElementById('loading-sync').classList.remove('hidden');
+
+            // Format data as form data for Google Apps Script
+            const formData = new FormData();
+            formData.append('Nama', studentData.name);
+            formData.append('Kelas', studentData.class);
+            formData.append('Benar', studentData.correct);
+            formData.append('Salah', studentData.wrong);
+            formData.append('Nilai', studentData.score);
+            formData.append('WaktuSubmit', new Date().toLocaleString('id-ID'));
+
+            fetch(SCRIPT_URL, { method: 'POST', body: formData })
+                .then(response => {
+                    document.getElementById('loading-sync').classList.add('hidden');
+                    document.getElementById('success-sync').classList.remove('hidden');
+                })
+                .catch(error => {
+                    document.getElementById('loading-sync').classList.add('hidden');
+                    console.error('Error!', error.message);
+                });
+        }
+    </script>
+</body>
+</html>
